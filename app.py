@@ -6,23 +6,18 @@ from io import BytesIO
 # Configuração da página
 st.set_page_config(
     page_title="Conversor Porto Seguro",
-    page_icon="📄",
-    layout="wide"
+    page_icon="📄"
 )
 
-# Título
 st.title("📄 Conversor Porto Seguro")
-st.write("Faça upload da fatura PDF e receba o Excel convertido.")
+st.write("Faça upload do PDF para converter em Excel.")
 
-# Upload do PDF
 arquivo = st.file_uploader(
     "Selecione o PDF",
     type=["pdf"]
 )
 
 if arquivo is not None:
-
-    st.info("Processando arquivo...")
 
     todas_tabelas = []
 
@@ -33,8 +28,7 @@ if arquivo is not None:
             tabelas = pagina.extract_tables()
 
             st.write(
-                f"Página {numero_pagina}: "
-                f"{len(tabelas)} tabela(s) encontrada(s)"
+                f"Página {numero_pagina}: {len(tabelas)} tabela(s) encontrada(s)"
             )
 
             for tabela in tabelas:
@@ -52,11 +46,7 @@ if arquivo is not None:
                             if celula:
 
                                 celula = str(celula)
-
-                                # Troca quebra de linha por espaço
                                 celula = celula.replace("\n", " ")
-
-                                # Remove espaços duplicados
                                 celula = " ".join(celula.split())
 
                             nova_linha.append(celula)
@@ -67,13 +57,41 @@ if arquivo is not None:
 
                     todas_tabelas.append(df)
 
-    st.write(
-        f"Total de tabelas encontradas: {len(todas_tabelas)}"
-    )
+    st.write(f"Total de tabelas encontradas: {len(todas_tabelas)}")
 
     if len(todas_tabelas) > 0:
 
         resultado = pd.concat(
             todas_tabelas,
             ignore_index=True
-   
+        )
+
+        resultado = resultado.replace("", pd.NA)
+        resultado = resultado.dropna(how="all")
+        resultado = resultado.dropna(axis=1, how="all")
+        resultado = resultado.reset_index(drop=True)
+
+        st.success("✅ Conversão concluída!")
+
+        st.dataframe(resultado.head(50))
+
+        excel = BytesIO()
+
+        resultado.to_excel(
+            excel,
+            index=False,
+            engine="openpyxl"
+        )
+
+        excel.seek(0)
+
+        st.download_button(
+            "📥 Baixar Excel",
+            data=excel,
+            file_name="Resultado_PDF_Porto.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    else:
+
+        st.error("Nenhuma tabela encontrada no PDF.")
